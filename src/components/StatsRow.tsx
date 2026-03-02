@@ -27,8 +27,12 @@ const StatCard = ({ icon, label, value, sub }: StatCardProps) => (
   </motion.div>
 );
 
-const StatsRow = () => (
-  <div className="flex gap-3">
+interface StatsRowProps {
+  vertical?: boolean;
+}
+
+const StatsRow = ({ vertical }: StatsRowProps) => (
+  <div className={`flex gap-3 ${vertical ? "flex-col" : ""}`}>
     <StatCard icon={<Bell size={20} />} label="Alerts Today" value="12" sub="3 urgent" />
     <StatCard icon={<Clock size={20} />} label="Pending" value="3" sub="Snoozed" />
     <StatCard icon={<CalendarClock size={20} />} label="Next Sync" value="15m" sub="Meeting" />
