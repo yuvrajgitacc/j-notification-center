@@ -9,17 +9,13 @@ require('dotenv').config();
 // Initialize Firebase Admin
 try {
   let serviceAccount;
-  
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    // If we have a JSON string in Environment Variables (for Render/Vercel)
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     console.log("Firebase initialized from Environment Variable.");
   } else {
-    // Fallback to local file
     serviceAccount = require('./serviceAccountKey.json');
     console.log("Firebase initialized from local file.");
   }
-
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
@@ -30,8 +26,8 @@ try {
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Middleware - OPEN FOR ALL MOBILE CONNECTIONS
+app.use(cors({ origin: '*' }));
 app.use(bodyParser.json());
 
 // Database Setup
@@ -66,7 +62,6 @@ db.exec(`
     last_active DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Default Settings
   INSERT OR IGNORE INTO settings (key, value) VALUES ('push_enabled', 'true');
   INSERT OR IGNORE INTO settings (key, value) VALUES ('quiet_mode', 'false');
   INSERT OR IGNORE INTO settings (key, value) VALUES ('priority_level', 'all');
@@ -77,13 +72,17 @@ db.exec(`
 // Register FCM Token
 app.post('/api/register-token', (req, res) => {
   const { token } = req.body;
+  console.log(`[FCM] Registration hit. Token status: ${token ? 'Present' : 'MISSING'}`);
+  
   if (!token) return res.status(400).json({ error: 'Token is required' });
 
   try {
     db.prepare('INSERT OR REPLACE INTO fcm_tokens (token, last_active) VALUES (?, CURRENT_TIMESTAMP)').run(token);
-    console.log(`[FCM] New Device Registered! Total tokens: ${db.prepare('SELECT COUNT(*) as count FROM fcm_tokens').get().count}`);
-    res.json({ message: 'Token registered successfully' });
+    const count = db.prepare('SELECT COUNT(*) as count FROM fcm_tokens').get().count;
+    console.log(`[FCM] ✅ Success! Device Registered. Total tokens: ${count}`);
+    res.json({ message: 'Token registered successfully', count });
   } catch (error) {
+    console.error(`[FCM] ❌ Failed: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -104,12 +103,10 @@ app.get('/api/notifications', (req, res) => {
   try {
     let query = 'SELECT * FROM notifications';
     const params = [];
-    
     if (status) {
       query += ' WHERE status = ?';
       params.push(status);
     }
-    
     query += ' ORDER BY time DESC';
     const notifications = db.prepare(query).all(...params);
     res.json(notifications);

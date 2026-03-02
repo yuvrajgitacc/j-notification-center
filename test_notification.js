@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 const sendTestNotification = async () => {
   try {
@@ -10,7 +10,11 @@ const sendTestNotification = async () => {
     });
     console.log('Notification sent:', response.data);
   } catch (error) {
-    console.error('Error sending notification:', error.message);
+    if (error.response) {
+      console.error('Error Response:', error.response.data);
+    } else {
+      console.error('Error Message:', error.message);
+    }
   }
 };
 
