@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Clock, MessageCircle, ChevronRight } from "lucide-react";
+import { Check, MessageCircle, ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { API_BASE_URL } from "@/config";
@@ -39,7 +39,7 @@ const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
       if (!response.ok) throw new Error("Network response was not ok");
       return response.json();
     },
-    refetchInterval: 10000, // Reduced polling to 10s for better performance
+    refetchInterval: 10000,
   });
 
   const markAsReadMutation = useMutation({
@@ -62,13 +62,8 @@ const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between px-1">
         <h2 className="text-[10px] font-bold text-muted-foreground tracking-[0.2em] uppercase">
-          {variant === "compact" ? "Recent Activity" : "All Notifications"}
+          {variant === "compact" ? "Recent Activity" : "Live Alerts"}
         </h2>
-        {variant === "compact" && notifications.length > 5 && (
-          <span className="text-[10px] text-primary animate-pulse font-medium uppercase tracking-widest">
-            +{notifications.length - 5} More
-          </span>
-        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -86,17 +81,20 @@ const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
               }`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.05, 0.3) }} // Capped delay for performance
+              transition={{ delay: Math.min(i * 0.05, 0.3) }}
             >
-              {/* Icon - Smaller in compact */}
-              <span className={`${variant === "compact" ? "text-sm" : "text-xl"} shrink-0`}>
-                {n.icon || "🔔"}
-              </span>
+              {/* Icon Logic: Handle both emoji and image URLs */}
+              <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0 overflow-hidden">
+                {n.icon?.startsWith('http') ? (
+                  <img src={n.icon} alt="" className="w-5 h-5 object-contain" />
+                ) : (
+                  <span className="text-sm">{n.icon || "🔔"}</span>
+                )}
+              </div>
 
-              {/* Title & Time Only for Compact */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className={`font-medium text-foreground truncate ${variant === "compact" ? "text-xs" : "text-sm"}`}>
+                  <p className={`font-semibold text-foreground truncate ${variant === "compact" ? "text-[11px]" : "text-sm"}`}>
                     {n.title}
                   </p>
                   <span className="text-[9px] text-muted-foreground shrink-0 font-mono">
@@ -104,8 +102,7 @@ const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
                   </span>
                 </div>
 
-                {/* Body only shown in Full view when expanded */}
-                <AnimatePresence>
+                <AnimatePresence mode="wait">
                   {variant === "full" && selectedId === n.id && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
@@ -117,7 +114,7 @@ const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
                         {n.body}
                       </p>
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase font-bold tracking-tighter">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase font-bold">
                           {n.category}
                         </span>
                         <div className="flex gap-1">
