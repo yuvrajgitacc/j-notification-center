@@ -1,0 +1,4 @@
+node_modules
+notifications.db
+.env
+serviceAccountKey.json

@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
 import { Bell, Clock, CalendarClock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config";
 
 interface StatCardProps {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: string | number;
   sub?: string;
 }
 
@@ -31,12 +33,39 @@ interface StatsRowProps {
   vertical?: boolean;
 }
 
-const StatsRow = ({ vertical }: StatsRowProps) => (
-  <div className={`flex gap-3 ${vertical ? "flex-col" : ""}`}>
-    <StatCard icon={<Bell size={20} />} label="Alerts Today" value="12" sub="3 urgent" />
-    <StatCard icon={<Clock size={20} />} label="Pending" value="3" sub="Snoozed" />
-    <StatCard icon={<CalendarClock size={20} />} label="Next Sync" value="15m" sub="Meeting" />
-  </div>
-);
+const StatsRow = ({ vertical }: StatsRowProps) => {
+  const { data: stats = { totalToday: 0, pending: 0, nextSync: 'Live' } } = useQuery({
+    queryKey: ["stats"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/stats`);
+      if (!response.ok) throw new Error("Network response was not ok");
+      return response.json();
+    },
+    refetchInterval: 5000,
+  });
+
+  return (
+    <div className={`flex gap-3 ${vertical ? "flex-col" : ""}`}>
+      <StatCard 
+        icon={<Bell size={20} />} 
+        label="Alerts Today" 
+        value={stats.totalToday} 
+        sub={`${stats.totalToday > 5 ? 'High Activity' : 'Quiet Day'}`} 
+      />
+      <StatCard 
+        icon={<Clock size={20} />} 
+        label="Pending" 
+        value={stats.pending} 
+        sub={stats.pending > 0 ? "Needs Review" : "All Clear"} 
+      />
+      <StatCard 
+        icon={<CalendarClock size={20} />} 
+        label="Next Sync" 
+        value={stats.nextSync} 
+        sub="Connected" 
+      />
+    </div>
+  );
+};
 
 export default StatsRow;

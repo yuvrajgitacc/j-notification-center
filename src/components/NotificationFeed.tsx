@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
 import { Check, Clock, MessageCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { API_BASE_URL } from "@/config";
 
 interface Notification {
   id: number;
@@ -8,18 +11,8 @@ interface Notification {
   body: string;
   time: string;
   category: string;
+  status: string;
 }
-
-const notifications: Notification[] = [
-  { id: 1, icon: "📧", title: "Email from Sarah", body: "Q1 report ready for review", time: "2m ago", category: "Email" },
-  { id: 2, icon: "💊", title: "Health Reminder", body: "Time to take your vitamin D supplement", time: "15m ago", category: "Health" },
-  { id: 3, icon: "💼", title: "Meeting Alert", body: "Team standup in 15 minutes — prepare updates", time: "28m ago", category: "Work" },
-  { id: 4, icon: "📱", title: "App Update", body: "J v2.4 is available with new features", time: "1h ago", category: "System" },
-  { id: 5, icon: "🏦", title: "Banking Alert", body: "Monthly subscription charged — $14.99", time: "2h ago", category: "Finance" },
-  { id: 6, icon: "📅", title: "Calendar", body: "Dentist appointment tomorrow at 10 AM", time: "3h ago", category: "Personal" },
-  { id: 7, icon: "🔔", title: "System Notice", body: "Your weekly report summary is ready", time: "4h ago", category: "System" },
-  { id: 8, icon: "📝", title: "Task Due", body: "Complete project proposal by end of day", time: "5h ago", category: "Work" },
-];
 
 const ActionButton = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
@@ -35,38 +28,81 @@ interface NotificationFeedProps {
 }
 
 const NotificationFeed = ({ expanded }: NotificationFeedProps) => {
+  const queryClient = useQueryClient();
+
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/notifications`);
+      if (!response.ok) throw new Error("Network response was not ok");
+      return response.json();
+    },
+    refetchInterval: 5000, // Poll every 5s for new notifications
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+
+  if (isLoading) {
+    return <div className="p-4 text-center text-muted-foreground">Loading alerts...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <h2 className="text-sm font-medium text-muted-foreground tracking-wider uppercase px-1">
         Notification Feed
       </h2>
       <div className={`flex flex-col gap-2 overflow-y-auto pr-1 ${expanded ? "max-h-[600px]" : "max-h-[400px]"}`}>
-        {notifications.map((n, i) => (
-          <motion.div
-            key={n.id}
-            className="glass-card rounded-lg p-3.5 flex items-start gap-3"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.05 }}
-          >
-            <span className="text-xl mt-0.5">{n.icon}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
-                <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
+        {notifications.length === 0 ? (
+          <div className="glass-card rounded-lg p-8 text-center text-muted-foreground">
+            No notifications yet. J is quiet.
+          </div>
+        ) : (
+          notifications.map((n, i) => (
+            <motion.div
+              key={n.id}
+              className={`glass-card rounded-lg p-3.5 flex items-start gap-3 transition-opacity ${
+                n.status === 'read' ? 'opacity-60' : 'opacity-100'
+              }`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <span className="text-xl mt-0.5">{n.icon || "🔔"}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {formatDistanceToNow(new Date(n.time), { addSuffix: true })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                   <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                    {n.category}
+                  </span>
+                  {n.status === 'unread' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
-              <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
-                {n.category}
-              </span>
-            </div>
-            <div className="flex gap-0.5 shrink-0">
-              <ActionButton><Check size={14} /></ActionButton>
-              <ActionButton><Clock size={14} /></ActionButton>
-              <ActionButton><MessageCircle size={14} /></ActionButton>
-            </div>
-          </motion.div>
-        ))}
+              <div className="flex gap-0.5 shrink-0">
+                <ActionButton onClick={() => markAsReadMutation.mutate(n.id)}>
+                  <Check size={14} />
+                </ActionButton>
+                <ActionButton><Clock size={14} /></ActionButton>
+                <ActionButton><MessageCircle size={14} /></ActionButton>
+              </div>
+            </motion.div>
+          ))
+        )}
       </div>
     </div>
   );

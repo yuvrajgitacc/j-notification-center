@@ -1,31 +1,71 @@
 import DashboardHeader from "@/components/DashboardHeader";
-import AIOrb from "@/components/AIOrb";
-import StatsRow from "@/components/StatsRow";
-import NotificationFeed from "@/components/NotificationFeed";
-import ActivityChart from "@/components/ActivityChart";
 import CommandInput from "@/components/CommandInput";
+import DashboardView from "@/components/DashboardView";
+import ArchiveView from "@/components/ArchiveView";
+import SettingsView from "@/components/SettingsView";
+import ActivityChart from "@/components/ActivityChart";
 import { Home, Archive, BarChart3, Settings } from "lucide-react";
+import { useState } from "react";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("Dashboard");
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "Dashboard":
+        return <DashboardView />;
+      case "Archive":
+        return <ArchiveView />;
+      case "Analytics":
+        return (
+          <div className="max-w-5xl mx-auto flex flex-col gap-6">
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <BarChart3 className="text-primary" /> System Analytics
+            </h2>
+            <div className="glass-card rounded-xl p-8 h-[500px]">
+              <ActivityChart />
+            </div>
+          </div>
+        );
+      case "Settings":
+        return <SettingsView />;
+      default:
+        return <DashboardView />;
+    }
+  };
+
+  const navItems = [
+    { icon: Home, label: "Dashboard" },
+    { icon: Archive, label: "Archive" },
+    { icon: BarChart3, label: "Analytics" },
+    { icon: Settings, label: "Settings" },
+  ];
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Mobile layout */}
       <div className="lg:hidden flex flex-col min-h-screen max-w-2xl mx-auto px-4 w-full">
         <DashboardHeader />
-        <div className="flex justify-center py-8">
-          <AIOrb status="connected" />
+        <div className="flex-1 py-4 overflow-y-auto">
+          {renderContent()}
         </div>
-        <div className="mb-4">
-          <StatsRow />
-        </div>
-        <div className="mb-4 flex-1">
-          <NotificationFeed />
-        </div>
-        <div className="mb-4">
-          <ActivityChart />
-        </div>
-        <div className="sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent">
+        
+        {/* Mobile Nav */}
+        <div className="sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent flex flex-col gap-4">
           <CommandInput />
+          <nav className="flex justify-around items-center bg-secondary/30 backdrop-blur-lg border border-border/50 rounded-2xl p-2">
+            {navItems.map(({ icon: Icon, label }) => (
+              <button
+                key={label}
+                onClick={() => setActiveTab(label)}
+                className={`p-3 rounded-xl transition-all ${
+                  activeTab === label ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground"
+                }`}
+              >
+                <Icon size={20} />
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
 
@@ -47,23 +87,19 @@ const Index = () => {
           </div>
 
           <nav className="flex flex-col gap-1">
-            {[
-              { icon: Home, label: "Dashboard", active: true },
-              { icon: Archive, label: "Archive", active: false },
-              { icon: BarChart3, label: "Analytics", active: false },
-              { icon: Settings, label: "Settings", active: false },
-            ].map(({ icon: Icon, label, active }) => (
+            {navItems.map(({ icon: Icon, label }) => (
               <button
                 key={label}
+                onClick={() => setActiveTab(label)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  active
+                  activeTab === label
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                 }`}
               >
                 <Icon size={18} />
                 {label}
-                {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                {activeTab === label && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
               </button>
             ))}
           </nav>
@@ -75,7 +111,7 @@ const Index = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">User</p>
-                <p className="text-[10px] text-muted-foreground">Free Plan</p>
+                <p className="text-[10px] text-muted-foreground">Pro Plan</p>
               </div>
             </div>
           </div>
@@ -85,67 +121,26 @@ const Index = () => {
         <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
           {/* Top bar */}
           <header className="flex items-center justify-between px-6 py-4 border-b border-border/30">
-            <h2 className="text-lg font-semibold text-foreground">Notification Center</h2>
+            <h2 className="text-lg font-semibold text-foreground">{activeTab}</h2>
             <div className="flex items-center gap-2 text-muted-foreground text-xs">
               <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
               Connected · 24ms
             </div>
           </header>
 
-          {/* Content Grid */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="grid grid-cols-12 gap-5 max-w-7xl mx-auto">
-              {/* Left Column - Orb + Stats */}
-              <div className="col-span-4 xl:col-span-3 flex flex-col gap-5">
-                <div className="glass-card rounded-xl p-6 flex flex-col items-center justify-center">
-                  <AIOrb status="connected" />
-                  <div className="mt-10" />
-                </div>
-                <StatsRow vertical />
-              </div>
-
-              {/* Center Column - Feed */}
-              <div className="col-span-8 xl:col-span-5 flex flex-col gap-5">
-                <NotificationFeed expanded />
-              </div>
-
-              {/* Right Column - Charts */}
-              <div className="hidden xl:flex xl:col-span-4 flex-col gap-5">
-                <ActivityChart />
-                {/* Category breakdown */}
-                <div className="glass-card rounded-lg p-4">
-                  <h2 className="text-sm font-medium text-muted-foreground tracking-wider uppercase mb-3">
-                    Categories
-                  </h2>
-                  <div className="space-y-2.5">
-                    {[
-                      { label: "Work", pct: 40, color: "bg-primary" },
-                      { label: "Health", pct: 25, color: "bg-neon-green" },
-                      { label: "Finance", pct: 20, color: "bg-neon-amber" },
-                      { label: "Personal", pct: 15, color: "bg-muted-foreground" },
-                    ].map((c) => (
-                      <div key={c.label}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-secondary-foreground">{c.label}</span>
-                          <span className="text-muted-foreground">{c.pct}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div className={`h-full rounded-full ${c.color}`} style={{ width: `${c.pct}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Content Scroll Area */}
+          <div className="flex-1 overflow-y-auto p-6 bg-secondary/5">
+             {renderContent()}
           </div>
 
-          {/* Command bar */}
-          <div className="px-6 pb-4 pt-2 border-t border-border/20">
-            <div className="max-w-3xl mx-auto">
-              <CommandInput />
+          {/* Command bar (only shown on Dashboard) */}
+          {activeTab === "Dashboard" && (
+            <div className="px-6 pb-4 pt-2 border-t border-border/20">
+              <div className="max-w-3xl mx-auto">
+                <CommandInput />
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
     </div>
