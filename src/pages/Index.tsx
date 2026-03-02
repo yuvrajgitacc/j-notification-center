@@ -1,11 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import DashboardHeader from "@/components/DashboardHeader";
+import AIOrb from "@/components/AIOrb";
+import StatsRow from "@/components/StatsRow";
+import NotificationFeed from "@/components/NotificationFeed";
+import ActivityChart from "@/components/ActivityChart";
+import CommandInput from "@/components/CommandInput";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background flex flex-col max-w-2xl mx-auto px-4">
+      <DashboardHeader />
+
+      {/* Orb Section */}
+      <div className="flex justify-center py-8">
+        <AIOrb status="connected" />
+      </div>
+
+      {/* Stats */}
+      <div className="mb-4">
+        <StatsRow />
+      </div>
+
+      {/* Notification Feed */}
+      <div className="mb-4 flex-1">
+        <NotificationFeed />
+      </div>
+
+      {/* Activity Chart */}
+      <div className="mb-4">
+        <ActivityChart />
+      </div>
+
+      {/* Command Input - Sticky Bottom */}
+      <div className="sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent">
+        <CommandInput />
       </div>
     </div>
   );
