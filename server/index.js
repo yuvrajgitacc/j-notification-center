@@ -81,7 +81,18 @@ app.post('/api/register-token', (req, res) => {
 
   try {
     db.prepare('INSERT OR REPLACE INTO fcm_tokens (token, last_active) VALUES (?, CURRENT_TIMESTAMP)').run(token);
+    console.log(`[FCM] New Device Registered! Total tokens: ${db.prepare('SELECT COUNT(*) as count FROM fcm_tokens').get().count}`);
     res.json({ message: 'Token registered successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug Endpoint to see tokens
+app.get('/api/debug/tokens', (req, res) => {
+  try {
+    const tokens = db.prepare('SELECT * FROM fcm_tokens').all();
+    res.json({ count: tokens.length, tokens });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
