@@ -4,7 +4,8 @@ import DashboardView from "@/components/DashboardView";
 import ArchiveView from "@/components/ArchiveView";
 import SettingsView from "@/components/SettingsView";
 import ActivityChart from "@/components/ActivityChart";
-import { Home, Archive, BarChart3, Settings } from "lucide-react";
+import NotificationFeed from "@/components/NotificationFeed";
+import { Home, Archive, BarChart3, Settings, Bell } from "lucide-react";
 import { useState } from "react";
 
 const Index = () => {
@@ -14,6 +15,18 @@ const Index = () => {
     switch (activeTab) {
       case "Dashboard":
         return <DashboardView />;
+      case "Alerts":
+        return (
+          <div className="max-w-3xl mx-auto flex flex-col gap-6">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <Bell className="text-primary" /> Notifications
+              </h2>
+              <p className="text-sm text-muted-foreground">Click a notification to read the full message from J.</p>
+            </div>
+            <NotificationFeed variant="full" />
+          </div>
+        );
       case "Archive":
         return <ArchiveView />;
       case "Analytics":
@@ -36,36 +49,39 @@ const Index = () => {
 
   const navItems = [
     { icon: Home, label: "Dashboard" },
+    { icon: Bell, label: "Alerts" },
     { icon: Archive, label: "Archive" },
     { icon: BarChart3, label: "Analytics" },
     { icon: Settings, label: "Settings" },
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-hidden">
       {/* Mobile layout */}
-      <div className="lg:hidden flex flex-col min-h-screen max-w-2xl mx-auto px-4 w-full">
+      <div className="lg:hidden flex flex-col h-screen max-w-2xl mx-auto px-4 w-full overflow-hidden">
         <DashboardHeader />
-        <div className="flex-1 py-4 overflow-y-auto">
+        <div className="flex-1 py-4 overflow-y-auto custom-scrollbar pb-32">
           {renderContent()}
         </div>
         
         {/* Mobile Nav */}
-        <div className="sticky bottom-0 pb-4 pt-2 bg-gradient-to-t from-background via-background to-transparent flex flex-col gap-4">
-          <CommandInput />
-          <nav className="flex justify-around items-center bg-secondary/30 backdrop-blur-lg border border-border/50 rounded-2xl p-2">
-            {navItems.map(({ icon: Icon, label }) => (
-              <button
-                key={label}
-                onClick={() => setActiveTab(label)}
-                className={`p-3 rounded-xl transition-all ${
-                  activeTab === label ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground"
-                }`}
-              >
-                <Icon size={20} />
-              </button>
-            ))}
-          </nav>
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent z-50">
+          <div className="max-w-2xl mx-auto flex flex-col gap-3">
+             {activeTab === "Dashboard" && <CommandInput />}
+             <nav className="flex justify-around items-center bg-secondary/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl">
+              {navItems.map(({ icon: Icon, label }) => (
+                <button
+                  key={label}
+                  onClick={() => setActiveTab(label)}
+                  className={`p-3 rounded-xl transition-all ${
+                    activeTab === label ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110" : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon size={18} />
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
       </div>
 

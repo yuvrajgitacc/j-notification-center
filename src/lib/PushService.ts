@@ -21,6 +21,18 @@ export const initializePush = async () => {
     return;
   }
 
+  // Create Android Channel for "Heads-up" notifications (Crucial for popups)
+  if (Capacitor.getPlatform() === 'android') {
+    await PushNotifications.createChannel({
+      id: 'j-notifications',
+      name: 'J Alerts',
+      description: 'Critical alerts from J',
+      importance: 5, // High importance for heads-up
+      visibility: 1,
+      vibration: true,
+    });
+  }
+
   // Register with FCM
   await PushNotifications.register();
 
@@ -43,11 +55,18 @@ export const initializePush = async () => {
     }
   });
 
-  PushNotifications.addListener('registrationError', (error: any) => {
-    console.error('Error on registration: ' + JSON.stringify(error));
+  // Handle incoming notifications
+  PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    // Show in-app toast
+    toast.success(notification.title || 'New Notification', {
+      description: notification.body,
+    });
   });
 
-  // Handle incoming notifications while app is open
+  // This ensures notifications SHOW UP even when the app is open (Foreground)
+  PushNotifications.removeAllListeners(); // Clean up
+  
+  // Re-add listeners with presentation options
   PushNotifications.addListener('pushNotificationReceived', (notification) => {
     toast.success(notification.title || 'New Notification', {
       description: notification.body,

@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
-import { Check, Clock, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, Clock, MessageCircle, ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { API_BASE_URL } from "@/config";
+import { useState } from "react";
 
 interface Notification {
   id: number;
@@ -16,7 +17,7 @@ interface Notification {
 
 const ActionButton = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
-    onClick={onClick}
+    onClick={(e) => { e.stopPropagation(); onClick?.(); }}
     className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
   >
     {children}
@@ -24,11 +25,12 @@ const ActionButton = ({ children, onClick }: { children: React.ReactNode; onClic
 );
 
 interface NotificationFeedProps {
-  expanded?: boolean;
+  variant?: "compact" | "full";
 }
 
-const NotificationFeed = ({ expanded }: NotificationFeedProps) => {
+const NotificationFeed = ({ variant = "full" }: NotificationFeedProps) => {
   const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ["notifications"],
@@ -37,7 +39,7 @@ const NotificationFeed = ({ expanded }: NotificationFeedProps) => {
       if (!response.ok) throw new Error("Network response was not ok");
       return response.json();
     },
-    refetchInterval: 5000, // Poll every 5s for new notifications
+    refetchInterval: 10000, // Reduced polling to 10s for better performance
   });
 
   const markAsReadMutation = useMutation({
@@ -51,55 +53,91 @@ const NotificationFeed = ({ expanded }: NotificationFeedProps) => {
   });
 
   if (isLoading) {
-    return <div className="p-4 text-center text-muted-foreground">Loading alerts...</div>;
+    return <div className="p-4 text-center text-muted-foreground animate-pulse text-xs">Syncing with J...</div>;
   }
 
+  const displayNotifications = variant === "compact" ? notifications.slice(0, 5) : notifications;
+
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium text-muted-foreground tracking-wider uppercase px-1">
-        Notification Feed
-      </h2>
-      <div className={`flex flex-col gap-2 overflow-y-auto pr-1 ${expanded ? "max-h-[600px]" : "max-h-[400px]"}`}>
-        {notifications.length === 0 ? (
-          <div className="glass-card rounded-lg p-8 text-center text-muted-foreground">
-            No notifications yet. J is quiet.
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between px-1">
+        <h2 className="text-[10px] font-bold text-muted-foreground tracking-[0.2em] uppercase">
+          {variant === "compact" ? "Recent Activity" : "All Notifications"}
+        </h2>
+        {variant === "compact" && notifications.length > 5 && (
+          <span className="text-[10px] text-primary animate-pulse font-medium uppercase tracking-widest">
+            +{notifications.length - 5} More
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {displayNotifications.length === 0 ? (
+          <div className="glass-card rounded-lg p-8 text-center text-muted-foreground text-xs">
+            No activity logged.
           </div>
         ) : (
-          notifications.map((n, i) => (
+          displayNotifications.map((n, i) => (
             <motion.div
               key={n.id}
-              className={`glass-card rounded-lg p-3.5 flex items-start gap-3 transition-opacity ${
-                n.status === 'read' ? 'opacity-60' : 'opacity-100'
+              onClick={() => variant === "full" && setSelectedId(selectedId === n.id ? null : n.id)}
+              className={`glass-card rounded-xl p-3 flex items-center gap-3 transition-all cursor-pointer ${
+                n.status === 'read' ? 'opacity-50' : 'opacity-100 border-l-2 border-l-primary'
               }`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.05, 0.3) }} // Capped delay for performance
             >
-              <span className="text-xl mt-0.5">{n.icon || "🔔"}</span>
+              {/* Icon - Smaller in compact */}
+              <span className={`${variant === "compact" ? "text-sm" : "text-xl"} shrink-0`}>
+                {n.icon || "🔔"}
+              </span>
+
+              {/* Title & Time Only for Compact */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
+                  <p className={`font-medium text-foreground truncate ${variant === "compact" ? "text-xs" : "text-sm"}`}>
+                    {n.title}
+                  </p>
+                  <span className="text-[9px] text-muted-foreground shrink-0 font-mono">
                     {formatDistanceToNow(new Date(n.time), { addSuffix: true })}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                   <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
-                    {n.category}
-                  </span>
-                  {n.status === 'unread' && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+
+                {/* Body only shown in Full view when expanded */}
+                <AnimatePresence>
+                  {variant === "full" && selectedId === n.id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed border-t border-border/30 pt-2">
+                        {n.body}
+                      </p>
+                      <div className="flex items-center justify-between mt-3">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase font-bold tracking-tighter">
+                          {n.category}
+                        </span>
+                        <div className="flex gap-1">
+                          <ActionButton onClick={() => markAsReadMutation.mutate(n.id)}>
+                            <Check size={14} />
+                          </ActionButton>
+                          <ActionButton><MessageCircle size={14} /></ActionButton>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
-              <div className="flex gap-0.5 shrink-0">
-                <ActionButton onClick={() => markAsReadMutation.mutate(n.id)}>
-                  <Check size={14} />
-                </ActionButton>
-                <ActionButton><Clock size={14} /></ActionButton>
-                <ActionButton><MessageCircle size={14} /></ActionButton>
-              </div>
+
+              {variant === "full" && (
+                <ChevronRight 
+                  size={14} 
+                  className={`text-muted-foreground transition-transform ${selectedId === n.id ? "rotate-90" : ""}`} 
+                />
+              )}
             </motion.div>
           ))
         )}
