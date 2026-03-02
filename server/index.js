@@ -124,8 +124,9 @@ app.post('/api/notifications', async (req, res) => {
     const pushSetting = db.prepare("SELECT value FROM settings WHERE key = 'push_enabled'").get();
     
     if (pushSetting && pushSetting.value === 'true') {
-      // 3. Get all registered tokens
+    // 3. Get all registered tokens
       const tokens = db.prepare('SELECT token FROM fcm_tokens').all().map(t => t.token);
+      console.log(`[Notification Center] Found ${tokens.length} registered tokens.`);
       
       if (tokens.length > 0) {
         const message = {
@@ -143,12 +144,20 @@ app.post('/api/notifications', async (req, res) => {
         // 4. Send via FCM
         try {
           const response = await admin.messaging().sendEachForMulticast(message);
-          console.log(`[FCM] Successfully sent message: ${response.successCount} messages were sent successfully`);
+          console.log(`[FCM] Response: ${response.successCount} success, ${response.failureCount} failure`);
+          
+          if (response.failureCount > 0) {
+            response.responses.forEach((resp, idx) => {
+              if (!resp.success) {
+                console.error(`[FCM] Token ${tokens[idx]} failed: ${resp.error.message}`);
+              }
+            });
+          }
         } catch (fcmError) {
-          console.error('[FCM] Error sending message:', fcmError);
+          console.error('[FCM] Critical Error:', fcmError);
         }
       } else {
-         console.log('[Notification Center] No FCM tokens registered. Skipping push.');
+         console.log('[Notification Center] ⚠️ No tokens found in database. Push skipped.');
       }
     }
 
